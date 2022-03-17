@@ -1,5 +1,6 @@
 package io.github.config4k
 
+import io.github.config4k.readers.NameInConfig
 import io.kotest.core.spec.style.WordSpec
 import io.kotest.matchers.shouldBe
 
@@ -14,6 +15,16 @@ class TestArbitraryType : WordSpec({
                 }""".toConfig()
             val person = config.extract<Person>("key")
             person shouldBe Person("foo", 20)
+        }
+        "return AnnotatedPerson" {
+            val config =
+                """
+                key = {  
+                  name = "foo"
+                  age = 20
+                }""".toConfig()
+            val person = config.extract<AnnotatedPerson>("key")
+            person shouldBe AnnotatedPerson("foo", 20)
         }
         "work if optional argument is omitted" {
             val config =
@@ -94,6 +105,7 @@ class TestArbitraryType : WordSpec({
 })
 
 data class Person(val name: String, val age: Int? = 10)
+data class AnnotatedPerson(@NameInConfig("name") val surname: String, val age: Int? = 10)
 
 private data class PrivateEye(val target: String)
 

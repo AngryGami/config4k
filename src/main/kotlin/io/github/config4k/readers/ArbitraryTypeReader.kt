@@ -7,6 +7,7 @@ import io.github.config4k.getGenericMap
 import java.lang.reflect.ParameterizedType
 import kotlin.reflect.KParameter
 import kotlin.reflect.KVisibility
+import kotlin.reflect.full.findAnnotation
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.isAccessible
 import kotlin.reflect.jvm.javaType
@@ -14,6 +15,9 @@ import kotlin.reflect.jvm.javaType
 internal class ArbitraryTypeReader(clazz: ClassContainer) : Reader<Any>({ config, path ->
     extractWithParameters(clazz, config, path)
 })
+
+@Target(AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER)
+annotation class NameInConfig(val name: String = "")
 
 internal fun extractWithParameters(
     clazz: ClassContainer,
@@ -24,12 +28,16 @@ internal fun extractWithParameters(
     val map = constructor.parameters.associate { param ->
         val type = param.type.javaType
         val classContainer: ClassContainer = when (type) {
-            is ParameterizedType -> ClassContainer((type.rawType as Class<*>).kotlin, getGenericMap(type, clazz.typeArguments))
+            is ParameterizedType -> ClassContainer(
+                (type.rawType as Class<*>).kotlin,
+                getGenericMap(type, clazz.typeArguments)
+            )
             is Class<*> -> ClassContainer(type.kotlin)
             else -> requireNotNull(clazz.typeArguments[type.typeName]) { "couldn't find type argument for ${type.typeName}" }
         }
+        val pName = param.findAnnotation<NameInConfig>()?.name ?: param.name!!
         param to SelectReader.getReader(classContainer)
-            .invoke(if (parentPath.isEmpty()) config else config.extract(parentPath), param.name!!)
+            .invoke(if (parentPath.isEmpty()) config else config.extract(parentPath), pName)
     }
     val parameters = omitValue(map, config, parentPath)
     if (clazz.mapperClass.visibility == KVisibility.PRIVATE) {
