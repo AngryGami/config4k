@@ -53,7 +53,8 @@ internal fun omitValue(
     parentPath: String
 ): Map<KParameter, Any?> =
     map.filterNot { (param, _) ->
-        val path = if (parentPath.isEmpty()) param.name
-        else "$parentPath.${param.name}"
+        val pName = param.findAnnotation<NameInConfig>()?.name ?: param.name
+        val path = if (parentPath.isEmpty()) pName
+        else "$parentPath.$pName"
         param.isOptional && !config.hasPathOrNull(path)
     }
